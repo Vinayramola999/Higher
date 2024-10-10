@@ -1,23 +1,24 @@
-import logo from './logo.svg';
+// App.js
+import React from 'react';
 import './App.css';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import Sidebar from './component/Sidebar';
+import Navbar from './component/Navbar';
+import AssetManagementPage from './Pages/Asset';
+import Category from './Pages/Category';
+import Layout from './component/Layout'
+import WorkflowPage from './Pages/Workflow';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="bg-[#FBFCF8] flex" >
+      <Router>
+        <Routes>
+          <Route path="/assets" element={<Layout><AssetManagementPage /></Layout>} />
+          <Route path="/categories" element={<Layout><Category /></Layout>} />
+          <Route path="/Workflow" element={<Layout><WorkflowPage /></Layout>} />
+        </Routes>
+    </Router>
     </div>
   );
 }
