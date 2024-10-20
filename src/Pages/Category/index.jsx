@@ -7,6 +7,7 @@ const Category = () => {
     categoryName: "",
     categoryType: "Select Type",
   });
+  
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -17,9 +18,11 @@ const Category = () => {
   const [roles, setRoles] = useState([]);
 const [selectedRole, setSelectedRole] = useState('');
 const [selectedWorkflow, setSelectedWorkflow] = useState('');
+const[selectedApprovalRole, setSelectedApprovalRole]= useState('');
 const filteredCategories = categories.filter(category =>
-  category.categoriesname.toLowerCase().includes(searchTerm.toLowerCase())
-);
+  category.categoriesname?.toLowerCase().includes(searchTerm.toLowerCase()));
+ 
+
         
    
   const [selectedCategoryName, setSelectedCategoryName] = useState("");
@@ -66,7 +69,15 @@ const filteredCategories = categories.filter(category =>
       console.error("Error fetching categories fields:", error);
     }
   };
-
+  const approvalRole = [
+    "Approval Manager",
+    "Senior Approver",
+    "Approval Officer",
+    "Team Lead Approver"
+  ];
+  const handleApprovalRoleChange = (e) => {
+    setSelectedApprovalRole(e.target.value);
+  };
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCategoryData({ ...categoryData, [name]: value });
@@ -121,11 +132,17 @@ const filteredCategories = categories.filter(category =>
       const response = await axios.post("http://higher.co.in:9898/api/categories/add", newCategory);
       setUpdatedOn(new Date());
       setCategories([...categories, response.data]);
-      // resetForm();
+       resetForm();
+       alert("Category added successfully!");
     } catch (error) {
+      alert("Error adding category. Please try again.");
       console.error("Error adding category:", error);
     }
   };
+  // const closeModal = () => {
+  //   setIsEditCategoryModalOpen(false);
+  //   resetForm(); // Reset the form fields when closing the modal
+  // }
 
   const resetForm = () => {
     setCategoryData({ categoryName: "", categoryType: "Select Type" });
@@ -200,37 +217,55 @@ const filteredCategories = categories.filter(category =>
       }
     }
   };
-  
+  console.log({existingFields, newFields})
 
   const handlePublish = async () => {
+    console.log("handle publish")
     try {
-      const publishData = {
-        categoryName: selectedCategoryName,
-        assets: newFields,
-      };
-  
-      console.log("Publishing Data:", publishData); // Log the data being sent
-  
-      const response = await axios.post("http://higher.co.in:9898/api/categories/publish/${Id}", publishData);
-  
-      console.log("Response from Publish:", response.data); // Log response for confirmation
-      closeModal();
-      fetchCategories(); // Fetch categories again to refresh the list
-      alert("Category published successfully!");
+        // Construct the publish data
+
+        let updatedFieldsData = newFields.reduce((acc, field) => {
+          acc[field.fieldname] = `${field.assetDataType}${field.isNullable ? ",NULL" : ",NOT NULL"}`;
+          return acc;
+        }, {})
+
+        for (let data of existingFields) {
+          updatedFieldsData[data.fieldname] = `${data.assetDataType}${data.isNullable ? ",NULL" : ",NOT NULL"}`
+        }
+
+        // updatedFieldsData["roles"] ="admin"
+
+        const publishData = {
+            categoryName: selectedCategoryName,
+            fields: updatedFieldsData
+        };
+
+        console.log("Publishing Data:", publishData); // Log the data being sent
+
+        const response = await axios.post("http://higher.co.in:9898/api/tables/publish", publishData);
+
+        console.log("Response from Publish:", response.data); // Log response for confirmation
+        closeModal();
+        fetchCategories(); // Fetch categories again to refresh the list
+        alert("Category published successfully!");
     } catch (error) {
-      if (error.response) {
-        console.error("Error response from server:", error.response.data);
-      } else if (error.request) {
-        console.error("No response received from server:", error.request);
-      } else {
-        console.error("Error in setting up request:", error.message);
-      }
-      alert("Failed to publish the category. Please try again.");
+      console.log({
+        error
+      })
+        if (error.response) {
+            console.error("Error response from server:", error.response.data);
+        } else if (error.request) {
+            console.error("No response received from server:", error.request);
+        } else {
+            console.error("Error in setting up request:", error.message);
+        }
+        alert("Failed to publish the category. Please try again.");
     }
-  };
+};
+
   
 
-  const openEditModal = (category) => {
+  const openEditModal  = (category) => {
     setSelectedCategoryName(category.categoriesname);
     setEditCategoryId(category.categoryId);
     setIsEditCategoryModalOpen(true);
@@ -240,24 +275,29 @@ const filteredCategories = categories.filter(category =>
     console.log({filterCategoryFields},{category})
 
     setExistingFields(filterCategoryFields.length
-      ? filterCategoryFields.map(c => ({ id:c.id, fieldname: c.fieldname, assetDataType: c.datatype, isUnique: c.unique, isNullable: c.null }))
+      ? filterCategoryFields.map(c => ({ id:c.id, fieldname: c.fieldname, assetDataType: c.assetDataType, isUnique: c.isUnique, isNullable: c.isNullable }))
       : 
       []
     );
+
     setNewFields(!filterCategoryFields.length?[
       { fieldname: "Asset Name", assetDataType: "String", isUnique: false, isNullable: false },
       { fieldname: "Unit of Measure", assetDataType: "String", isUnique: false, isNullable: false },
       { fieldname: "Upload", assetDataType: "String", isUnique: false, isNullable: false },
       { fieldname: "Quantity", assetDataType: "Number", isUnique: false, isNullable: false },
     ]:[{ fieldname: "", assetDataType: "String", isUnique: false, isNullable: false }]);  // Reset new fields
+    
   };
+  
                     
   const closeModal = () => {
     setIsEditCategoryModalOpen(false);
     setNewFields([{ fieldname: "", assetDataType: "String", isUnique: false, isNullable: false }
-       
+      
     ]);
+    
   };
+  
 
   const handleClickOutside = (event) => {
     if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -287,7 +327,7 @@ const filteredCategories = categories.filter(category =>
 
   
   return (
-    <div className="p-6 bg-gray-100">
+    <div className="p-5 bg-grey-100">
       <div className="bg-white p-4 rounded-lg shadow-md">
         {/* <h2 className="text-lg font-semibold mb-4">Add Category</h2> */}
         <form onSubmit={handleSubmit} className="flex flex-wrap gap-4 mb-4">
@@ -298,7 +338,7 @@ const filteredCategories = categories.filter(category =>
               name="categoryName"
               value={categoryData.categoryName}
               onChange={handleInputChange}
-              className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
+              className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
               required
             />
           </div>
@@ -309,7 +349,7 @@ const filteredCategories = categories.filter(category =>
               name="categoryType"
               value={categoryData.categoryType}
               onChange={handleInputChange}
-              className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
+              className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
               required
             >
               <option value="Select Type" disabled>Select Type</option>
@@ -323,7 +363,7 @@ const filteredCategories = categories.filter(category =>
     name="workflow"
     value={selectedWorkflow}
     onChange={(e) => setSelectedWorkflow(e.target.value)}
-    className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
     required
   >
     <option value="">Select Workflow</option>
@@ -333,16 +373,37 @@ const filteredCategories = categories.filter(category =>
     <option value="4">Custom Workflow</option>
   </select>
 </div>
+   {/* Approval Role Dropdown */}
+   <div className="flex flex-col gap-2">
+            <label className="text-[#555252]">Approval Role</label>
+            <select
+              name="approvalRole"
+              value={selectedApprovalRole}
+              onChange={handleApprovalRoleChange}
+              className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
+              required
+            >
+              <option value="" disabled> Approval Role</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.role}>
+                  {role.role}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="flex items-end">
             <button
               type="submit"
-              className="rounded-full bg-blue-600 text-white py-2 px-10 hover:bg-blue-700"
+              className="rounded-full bg-blue-600 text-white py-2 px-10 w-[150px] hover:bg-blue-700"
             >
               Submit
             </button>
           </div>
         </form>
+         
+        
+
     
 
 
@@ -354,7 +415,7 @@ const filteredCategories = categories.filter(category =>
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder="Search"
-        className="w-[20%] p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className=" w-[250px] p-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     </div>
       
@@ -458,155 +519,140 @@ const filteredCategories = categories.filter(category =>
               </div>
            
 
-              <div className="flex flex-col gap-2">
-                <label className="text-[#555252]">Form Fields</label>
-                {existingFields.map((field, index) => (
-                  <div key={index} className="flex items-center gap-4 flex-wrap">
-                    <input
-                      type="text"
-                      name="fieldname"
-                      value={field.fieldname}
-                      onChange={(e) => handleExistingFieldChange(index, e)}
-                      placeholder="Field Name"
-                      className="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <select
-                      name="assetDataType"
-                      value={field.assetDataType}
-                      onChange={(e) => handleExistingFieldChange(index, e)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="String">String</option>
-                      <option value="Integer">Integer</option>
-                      <option value="Date">Date</option>
-                    </select>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="isNullable"
-                        checked={field.isNullable}
-                        onChange={(e) => handleExistingFieldChange(index, e)}
-                      />{' '}
-                      Not Null
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="isUnique"
-                        checked={field.isUnique}
-                        onChange={(e) => handleExistingFieldChange(index, e)}
-                      />{' '}
-                      Unique
-                    </label>
-                    {!["Asset Name",
-                   "Unit of Measure" ,
-                   "Upload","Quantity" ].includes(field.fieldname)&&
-                    <button
-                      type="button"
-                      onClick={() => removeExistingField(field.id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      <FaTrash />
-                    </button>
-}
-                  </div>
-                ))}
-
-{newFields.map((field, index) => (
-                  <div key={index} className="flex items-center gap-4 flex-wrap">
-                    <input
-                      type="text"
-                      required
-                      name="fieldname"
-                      value={field.fieldname}
-                      onChange={(e) => handleNewFieldChange(index, e)}
-                      placeholder="Field Name"
-                      className="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <select
-                      name="assetDataType"
-                      value={field.assetDataType}
-                      onChange={(e) => handleNewFieldChange(index, e)}
-                      className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="String">String</option>
-                      <option value="Integer">Integer</option>
-                      <option value="Date">Date</option>
-                    </select>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="isNullable"
-                        checked={field.isNullable}
-                        onChange={(e) => handleNewFieldChange(index, e)}
-                      />{' '}
-                      Not Null
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="isUnique"
-                        checked={field.isUnique}
-                        onChange={(e) => handleNewFieldChange(index, e)}
-                      />{' '}
-                      Unique
-                    </label>
-                     {!["Asset Name",
-                   "Unit of Measure" ,
-                   "Upload","Quantity" ].includes(field.fieldname)&&
-                    <button
-                      type="button"
-                      onClick={() => removeField(index)}
-                      className="text-red-500 hover:underline"
-                    > 
-                      <FaTrash />
-                    </button> 
-                    
-} 
-{console.log({field})}
-                  </div>
-                ))}
-
-                <div className="my-4 flex justify-between flex-wrap">
-                  <button
-                    type="button"
-                    onClick={addField}
-                    className="rounded-full bg-blue-600 text-white py-2 px-4 hover:bg-blue-700"
-                  >
-                    Add Field
-                  </button>
-
-                 
-
-                  <button
-                    type="button"
-                    onClick={handleTemporarySave}
-                    className="rounded-full bg-blue-600 text-white py-2 px-4 hover:bg-blue-700"
-                  >
-                    Save
-                  </button>
-                 
-                  {/* <button
-                    onClick={ handlePublish}
-                    className="text-green-500 hover:text-green-700"
-                    
-                  >
-                    
-                  </button> */}
-                   <button
-                 onClick={ handlePublish}
-                  className="ml-3 rounded-full bg-green-600 text-white py-2 px-4 hover:bg-green-700"
+              {/* Scrollable Field Section */}
+        <div className="flex flex-col gap-2 max-h-60 overflow-y-auto border p-4 rounded-lg ">
+          <label className="text-[#555252]">Form Fields</label>
+          {existingFields.map((field, index) => (
+            <div key={index} className="flex items-center gap-4 flex-wrap">
+              <input
+                type="text"
+                name="fieldname"
+                value={field.fieldname}
+                onChange={(e) => handleExistingFieldChange(index, e)}
+                placeholder="Field Name"
+                className="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <select
+                name="assetDataType"
+                value={field.assetDataType}
+                onChange={(e) => handleExistingFieldChange(index, e)}
+                className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="String">String</option>
+                <option value="Integer">Integer</option>
+                <option value="Date">Date</option>
+              </select>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isNullable"
+                  checked={field.isNullable}
+                  onChange={(e) => handleExistingFieldChange(index, e)}
+                />{' '}
+                Not Null
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isUnique"
+                  checked={field.isUnique}
+                  onChange={(e) => handleExistingFieldChange(index, e)}
+                />{' '}
+                Unique
+              </label>
+              {!["Asset Name", "Unit of Measure", "Upload", "Quantity"].includes(field.fieldname) &&
+                <button
+                  type="button"
+                  onClick={() => removeExistingField(field.id)}
+                  className="text-red-500 hover:underline"
                 >
-                  Publish
+                  <FaTrash />
                 </button>
-
-                 
-                </div>
-              </div>
-            </form>
-          </div>
+              }
+            </div>
+          ))}
+          {newFields.map((field, index) => (
+            <div key={index} className="flex items-center gap-4 flex-wrap">
+              <input
+                type="text"
+                required
+                name="fieldname"
+                value={field.fieldname}
+                onChange={(e) => handleNewFieldChange(index, e)}
+                placeholder="Field Name"
+                className="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <select
+                name="assetDataType"
+                value={field.assetDataType}
+                onChange={(e) => handleNewFieldChange(index, e)}
+                className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="String">String</option>
+                <option value="Integer">Integer</option>
+                <option value="Date">Date</option>
+              </select>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isNullable"
+                  checked={field.isNullable}
+                  onChange={(e) => handleNewFieldChange(index, e)}
+                />{' '}
+                Not Null
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isUnique"
+                  checked={field.isUnique}
+                  onChange={(e) => handleNewFieldChange(index, e)}
+                />{' '}
+                Unique
+              </label>
+              {!["Asset Name", "Unit of Measure", "Upload", "Quantity"].includes(field.fieldname) &&
+                <button
+                  type="button"
+                  onClick={() => removeField(index)}
+                  className="text-red-500 hover:underline"
+                >
+                  <FaTrash />
+                </button>
+              }
+              {console.log({ field })}
+            </div>
+          ))}
         </div>
-      )}
+
+        <div className="my-4 flex justify-between flex-wrap">
+          <button
+            type="button"
+            onClick={addField}
+            className="rounded-full bg-blue-600 text-white py-2 px-4 hover:bg-blue-700"
+          >
+            Add Field
+          </button>
+
+          <button
+            type="button"
+            onClick={handleTemporarySave}
+            className="rounded-full bg-blue-600 text-white py-2 px-4 hover:bg-blue-700"
+          >
+            Save
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePublish}
+            className="ml-3 rounded-full bg-green-600 text-white py-2 px-4 hover:bg-green-700"
+          >
+            Publish
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
       {/* Temporary Save Modal */}
       {isTempModalOpen && (
@@ -614,7 +660,7 @@ const filteredCategories = categories.filter(category =>
           <div className="bg-white rounded-lg p-6 shadow-lg">
             <h2 className="text-lg font-semibold mb-4">Category Temporarily Saved!</h2>
             <button
-              onClick={() => setIsTempModalOpen(false)}
+              onClick={() => {setIsTempModalOpen(false); fetchCategoryFields()}}
               className="rounded-full bg-blue-600 text-white py-2 px-4 hover:bg-blue-700"
             >
               Close

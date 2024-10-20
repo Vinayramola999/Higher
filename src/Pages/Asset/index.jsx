@@ -4,27 +4,14 @@ import axios from 'axios';
 const AssetManagementPage = () => {
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [dynamicFields, setDynamicFields] = useState([]);
-  const [formData, setFormData] = useState({
-    category: '',
-    assetName: '',
-    assetLifecycle: '',
-    assetModelNo: '',
-    assetCompany: '',
-    assetSerialNo: '',
-    estimatedEndDate: '',
-    configuration: '',
-    taxationNo: '',
-    supplierName: '',
-    address: '',
-    phoneNumber: '',
-  });
+  const [dynamicFields, setDynamicFields] = useState([]); // Array to store dynamic fields from columns
+  const [formData, setFormData] = useState({});
 
   const assets = [
     {
       name: 'ASUS VIVOBOOK A15',
       category: 'Laptop',
-      modelNo: '1234567890',
+      Quantity: '10',
     },
     // Add more assets here
   ];
@@ -47,7 +34,7 @@ const AssetManagementPage = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
 
     // Fetch dynamic fields based on the selected category
@@ -58,8 +45,11 @@ const AssetManagementPage = () => {
 
   const fetchDynamicFields = async (categoryName) => {
     try {
-      const response = await axios.get(`http://higher.co.in:9898/api/categories/dynamic-fields/${categoryName}`);
-      setDynamicFields(response.data);
+      const response = await axios.get(`http://higher.co.in:9898/api/tables/table-data/${categoryName}`);
+      const { columns } = response.data;
+
+      // Extract and set dynamic fields
+      setDynamicFields(columns);
     } catch (error) {
       console.error("Error fetching dynamic fields:", error);
     }
@@ -90,7 +80,7 @@ const AssetManagementPage = () => {
           <tr className="bg-blue-600 text-white">
             <th className="px-4 py-2 border">Asset Name</th>
             <th className="px-4 py-2 border">Category</th>
-            <th className="px-4 py-2 border">Model No.</th>
+            <th className="px-4 py-2 border">Quantity</th>
             <th className="px-4 py-2 border">Action</th>
           </tr>
         </thead>
@@ -99,7 +89,7 @@ const AssetManagementPage = () => {
             <tr key={index} className="even:bg-gray-100">
               <td className="px-4 py-2 border">{asset.name}</td>
               <td className="px-4 py-2 border">{asset.category}</td>
-              <td className="px-4 py-2 border">{asset.modelNo}</td>
+              <td className="px-4 py-2 border">{asset.Quantity}</td>
               <td className="px-4 py-2 border">
                 <button className="text-blue-600 mx-2">ℹ️</button>
                 <button className="text-green-600 mx-2">✏️</button>
@@ -126,7 +116,7 @@ const AssetManagementPage = () => {
                 <label htmlFor="category" className="mb-1 text-sm font-medium text-gray-700">Category</label>
                 <select
                   name="category"
-                  value={formData.category}
+                  value={formData.category || ""}
                   onChange={handleChange}
                   className="p-2 rounded border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-[#F0F0F0]"
                 >
@@ -138,21 +128,28 @@ const AssetManagementPage = () => {
                   ))}
                 </select>
               </div>
-              {dynamicFields.map((field, index) => (
-                <div key={index} className="flex flex-col">
-                  <label htmlFor={field.name} className="mb-1 text-sm font-medium text-gray-700">
-                    {field.label}
-                  </label>
-                  <input
-                    type={field.type}
-                    name={field.name}
-                    value={formData[field.name]}
-                    onChange={handleChange}
-                    className="p-2 rounded border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-[#F0F0F0]"
-                    required
-                  />
-                </div>
-              ))}
+
+              {/* Dynamic Fields Render */}
+              {dynamicFields.length > 0 ? (
+                dynamicFields.map((field, index) => (
+                  <div key={index} className="flex flex-col">
+                    <label htmlFor={field} className="mb-1 text-sm font-medium text-gray-700">
+                      {field} {/* Assuming field name is the label */}
+                    </label>
+                    <input
+                      type="text" // You can modify this to the appropriate field type if available
+                      name={field}
+                      value={formData[field] || ""}
+                      onChange={handleChange}
+                      className="p-2 rounded border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-[#F0F0F0]"
+                      required
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-2 text-center text-sm text-gray-500">No dynamic fields available for this category</div>
+              )}
+
               <div className="col-span-2 flex justify-end mt-4">
                 <button
                   type="button"

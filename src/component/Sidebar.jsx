@@ -1,8 +1,10 @@
 // Sidebar.js
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaTh, FaUserCog, FaClipboardList,FaProjectDiagram } from 'react-icons/fa';
+import { FaTh, FaUserCog, FaClipboardList,FaProjectDiagram,} from 'react-icons/fa';
 import logo from '../Assets/logo.jpg'; // Import your logo image
+
+
 
 const Sidebar = () => {
   return (
@@ -22,10 +24,12 @@ const Sidebar = () => {
           <FaClipboardList /> <span>Add Category</span>
         </Link>
 
-        <li className="flex items-center space-x-3 cursor-pointer">
+        <Link to="/Approval" className="flex items-center space-x-3 cursor-pointer">
           <FaUserCog /> <span>Approval Authority</span>
-        </li>
-
+        </Link>
+        <Link to="/Depreciation" className="flex items-center space-x-3 cursor-pointer">
+          <FaUserCog /> <span>Depreciation</span>
+        </Link>
         <li className="flex items-center space-x-3 cursor-pointer">
           <FaClipboardList /> <span>Audit Logs</span>
         </li>
