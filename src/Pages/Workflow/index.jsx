@@ -24,7 +24,7 @@ const WorkflowPage = () => {
   useEffect(() => {
     const fetchWorkflows = async () => {
       try {
-        const response = await axios.get("http://higher.co.in:9898/workflow/get");
+        const response = await axios.get("http://higherindia.net:9898/workflow/get");
         setAvailableWorkflows(response.data);
         setWorkflows(response.data); // Ensure ID is included
       } catch (error) {
@@ -54,7 +54,7 @@ const WorkflowPage = () => {
   
     try {
       console.log("Attempting to delete workflow with ID:", id);
-      const response = await axios.delete(`http://higher.co.in:9898/workflow/delete/${id}`);
+      const response = await axios.delete(`http://higherindia.net:9898/workflow/delete/${id}`);
       setWorkflows(workflows.filter((workflow) => workflow.id !== id));
        setUpdatedOn((prev) => prev + 1);
       
@@ -93,7 +93,7 @@ const WorkflowPage = () => {
 
   const handleAddWorkflow = async () => {
     try {
-      const response = await axios.post("http://higher.co.in:9898/workflow/save", {
+      const response = await axios.post("http://higherindia.net:9898/workflow/save", {
         workflowname: formData.workflowname,
         description: formData.description,
         createdby: formData.createdby,
@@ -212,13 +212,13 @@ const WorkflowPage = () => {
                     <option value="add-new">Add New Workflow</option>
                   </select>
                   {formData.workflowname === "add-new" && (
-                    <div className="mt-2">
+                    <div className="mt-2 ">
                       <input
                         type="text"
                         value={newWorkflow}
                         onChange={(e) => setNewWorkflow(e.target.value)}
                         placeholder="New Workflow Name"
-                        className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full transition duration-200"
+                        className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full transition duration-200 "
                       />
                       <button
                         type="button"

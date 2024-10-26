@@ -54,15 +54,7 @@ const RequestTable = ({ type, requests }) => {
 
     return (
         <div className="bg-white rounded-lg p-4 shadow-md mt-4 w-full">
-            {/* Search Bar */}
-            <input
-                type="text"
-                placeholder={`Search ${type}...`}
-                className="border border-gray-300 rounded-lg p-2 mb-4 w-full md:w-1/2 lg:w-[20%]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
+       
             {/* Filters */}
             <div className="flex flex-col md:flex-row mb-4 space-y-2 md:space-y-0 md:space-x-2">
                 <select
@@ -85,19 +77,22 @@ const RequestTable = ({ type, requests }) => {
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                 />
-                <input
-                    type="date"
-                    className="border border-gray-300 rounded-lg p-2 w-full md:w-48"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                />
+                     {/* Search Bar */}
+            <input
+                type="text"
+                placeholder={`Search ${type}...`}
+                className="border border-gray-300 rounded-lg p-2 mb-4 w-full md:w-1/2 lg:w-[20%]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
             </div>
 
             {/* Table with increased height and width */}
             <div className="overflow-x-auto">
                 <div className="max-h-[33.5rem] overflow-y-auto">
                     <table className="w-full bg-white border border-gray-200 rounded-lg shadow-md">
-                        <thead>
+                        <thead className="sticky top-0 bg-gray-200" >
                             <tr className="bg-blue-600 text-white">
                                 <th className="py-2 px-4 text-left">Sr. No.</th>
                                 <th className="py-2 px-4 text-left">{type} Name</th>
@@ -164,21 +159,21 @@ const ApprovalAuthority = () => {
 
     return (
         <div className="container mx-auto p-4">
-            {/* Tabs as Cards */}
-            <div className="flex flex-wrap justify-center space-x-2 mb-4">
+            {/* Tabs with Google-like underline animation */}
+            <div className="flex justify-left space-x-6 mb-6">
                 {['Asset', 'Category', 'Workflow'].map((tab) => (
-                    <div
+                    <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`cursor-pointer p-2 rounded-lg shadow-sm text-center transition hover:shadow-lg transform hover:scale-105 ${
-                            activeTab === tab
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white text-blue-600 border border-blue-600'
+                        className={`relative text-lg font-semibold pb-2 transition-all duration-300 ${
+                            activeTab === tab ? 'text-blue-600' : 'text-gray-600'
                         }`}
                     >
-                        <h2 className="text-lg font-semibold">{tab} Requests</h2>
-                        <p className="text-sm">Manage {tab.toLowerCase()} requests.</p>
-                    </div>
+                        {tab} Requests
+                        {activeTab === tab && (
+                            <span className="absolute bottom-0 left-0 w-full h-[3px] bg-blue-600 rounded-full transition-all duration-300"></span>
+                        )}
+                    </button>
                 ))}
             </div>
 

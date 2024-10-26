@@ -37,23 +37,24 @@ const filteredCategories = categories.filter(category =>
     ;
     
   }, [updatedOn]);
-
   useEffect(() => {
-    if (isEditCategoryModalOpen) {
-      // Fetch roles from API when the modal opens
-      axios.get('http://higher.co.in:3001/role')
+    if (isEditCategoryModalOpen , categories) {
+      axios.get('http://higherindia.net:3001/role')
         .then(response => {
-          setRoles(response.data);
+          if (response && response.data) {
+            setRoles(response.data);
+          }
         })
         .catch(error => {
           console.error('Error fetching roles:', error);
         });
     }
-  }, [isEditCategoryModalOpen]);
+  }, [isEditCategoryModalOpen, categories]);
+  
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get("http://higher.co.in:9898/api/categories/fetch");
+      const response = await axios.get("http://higherindia.net:9898/api/categories/fetch");
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -62,22 +63,20 @@ const filteredCategories = categories.filter(category =>
 
   const fetchCategoryFields = async () => {
     try {
-      const response = await axios.get("http://higher.co.in:9898/api/assets/fetch");
+      const response = await axios.get("http://higherindia.net:9898/api/assets/fetch");
       console.log( "response", response.data)
       setExistingFields(response.data);
     } catch (error) {
       console.error("Error fetching categories fields:", error);
     }
   };
-  const approvalRole = [
-    "Approval Manager",
-    "Senior Approver",
-    "Approval Officer",
-    "Team Lead Approver"
-  ];
+  
+
+
+
   const handleApprovalRoleChange = (e) => {
     setSelectedApprovalRole(e.target.value);
-  };
+};
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCategoryData({ ...categoryData, [name]: value });
@@ -110,7 +109,7 @@ const filteredCategories = categories.filter(category =>
   };
   const removeExistingField = async (id) => {
     try {
-      await axios.delete(`http://higher.co.in:9898/api/assets/${id}`);
+      await axios.delete(`http://higherindia.net.in:9898/api/assets/${id}`);
       window.location.reload()
       
       setUpdatedOn((prev) => prev + 1);
@@ -129,7 +128,7 @@ const filteredCategories = categories.filter(category =>
         description: categoryData.categoryType,
         fields: [...existingFields, ...newFields],
       };
-      const response = await axios.post("http://higher.co.in:9898/api/categories/add", newCategory);
+      const response = await axios.post("http://higherindia.net:9898/api/categories/add", newCategory);
       setUpdatedOn(new Date());
       setCategories([...categories, response.data]);
        resetForm();
@@ -151,7 +150,7 @@ const filteredCategories = categories.filter(category =>
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://higher.co.in:9898/api/categories/delete/${id}`);
+      await axios.delete(`http://higherindia.net:9898/api/categories/delete/${id}`);
       setCategories(categories.filter((category) => category.id !== id));
       setUpdatedOn((prev) => prev + 1);
     } catch (error) {
@@ -169,7 +168,7 @@ const filteredCategories = categories.filter(category =>
   
       console.log("Temporary Save Data:", temporaryData); // Log the data being sent
   
-      const response = await axios.post("http://higher.co.in:9898/api/assets/insert", temporaryData);
+      const response = await axios.post("http://higherindia.net:9898/api/assets/insert", temporaryData);
       
       console.log("Response from Temporary Save:", response.data); // Log response for confirmation
       setIsTempModalOpen(true);
@@ -202,7 +201,7 @@ const filteredCategories = categories.filter(category =>
   
       console.log("Updated Category Data:", updatedCategory); // Log data being submitted
   
-      const response = await axios.post("http://higher.co.in:9898/api/temp/save", updatedCategory);
+      const response = await axios.post("http://higherindia.net:9898/api/temp/save", updatedCategory);
       
       console.log("Response from Save:", response.data); // Log response from server
       closeModal();
@@ -242,7 +241,7 @@ const filteredCategories = categories.filter(category =>
 
         console.log("Publishing Data:", publishData); // Log the data being sent
 
-        const response = await axios.post("http://higher.co.in:9898/api/tables/publish", publishData);
+        const response = await axios.post("http://higherindia.net:9898/api/tables/publish", publishData);
 
         console.log("Response from Publish:", response.data); // Log response for confirmation
         closeModal();
@@ -375,22 +374,24 @@ const filteredCategories = categories.filter(category =>
 </div>
    {/* Approval Role Dropdown */}
    <div className="flex flex-col gap-2">
-            <label className="text-[#555252]">Approval Role</label>
+            <label className="text-[#555252]">Approvers Role</label>
             <select
               name="approvalRole"
               value={selectedApprovalRole}
-              onChange={handleApprovalRoleChange}
+              onChange={(e)=>handleApprovalRoleChange(e)}
               className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
               required
             >
-              <option value="" disabled> Approval Role</option>
+              <option value="" disabled> Approvers Role</option>
               {roles.map((role) => (
-                <option key={role.id} value={role.role}>
-                  {role.role}
+                <option key={role.id} value={role.id}>
+                  {role.role} 
                 </option>
               ))}
             </select>
           </div>
+       
+          
 
           <div className="flex items-end">
             <button

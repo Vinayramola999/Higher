@@ -10,6 +10,7 @@ import Layout from './component/Layout';
 import WorkflowPage from './Pages/Workflow';
 import ApprovalAuthority from './Pages/ApprovalAuthority';
 import Depreciation from './Pages/Depreciation';
+import Login from './login';
 
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
           <Route path="/Approval" element={<Layout><ApprovalAuthority /></Layout>} />
           <Route path="/Workflow" element={<Layout><WorkflowPage /></Layout>} />
           <Route path="/Depreciation" element={<Layout><Depreciation /></Layout>} />
-          
+          <Route path="/Login" element={<Login />} />     
          
         </Routes>
     </Router>
