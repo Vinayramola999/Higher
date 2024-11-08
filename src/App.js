@@ -13,6 +13,7 @@ import Depreciation from './Pages/Depreciation';
 
 
 
+
 function App() {
   return (
     <div className="bg-[#FBFCF8] flex" >

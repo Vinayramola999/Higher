@@ -12,7 +12,7 @@ const DepreciationPage = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [viewData, setViewData] = useState([]);
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  
   const [dateOption, setDateOption] = useState('custom'); // New state for date range option
 
   useEffect(() => {
@@ -51,30 +51,46 @@ const DepreciationPage = () => {
   };
 
   const fetchViewData = async () => {
-    const formattedStartDate = dateOption === 'today' ? new Date().toISOString().split('T')[0] : startDate;
-    const formattedEndDate = dateOption === 'today' ? new Date().toISOString().split('T')[0] : endDate;
-    
+    const formattedStartDate = dateOption === 'custom' ? startDate : ''; // Only set if custom
+  
     try {
-      const endpoint =
-        selectedMethod === 'WDV'
-          ? `http://higherindia.net:9898/api/dep/calculateWDB/${selectedCategory}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
-          : `http://higherindia.net:9898/api/dep/calculateDepreciation/${selectedCategory}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
-      
-      const response = await fetch(endpoint);
-      const result = await response.json();
-      setViewData(result);
-      setShowTable(true);
+      let endpoint = '';
+      if (dateOption === 'today') {
+        if (selectedMethod === 'WDV') {
+          endpoint = `http://higherindia.net:9898/api/dep/calculateWDB/${selectedCategory}`;
+        } else if (selectedMethod === 'SLM') {
+          endpoint = `http://higherindia.net:9898/api/dep/calculateDepreciation/${selectedCategory}`;
+        }
+      } else if (dateOption === 'custom' && formattedStartDate) {
+        if (selectedMethod === 'WDV') {
+          endpoint = `http://higherindia.net:9898/api/dep/calculateWDBToDate/category/${selectedCategory}?startDate=${formattedStartDate}`;
+        } else if (selectedMethod === 'SLM') {
+          endpoint = `http://higherindia.net:9898/api/dep/calculateSlmDepreciationToDate/category/${selectedCategory}?startDate=${formattedStartDate}`;
+        }
+      }
+  
+      if (endpoint) {
+        const response = await fetch(endpoint);
+        const result = await response.json();
+        setViewData(result); // Set the data received
+        setShowTable(true);   // Display the table once data is fetched
+        setShowModal(false);  // Close the modal
+      }
     } catch (error) {
       console.error('Error fetching depreciation data:', error);
+      setShowModal(false); // Close the modal on error
     }
   };
+  
+  
 
   const handleViewSubmit = async () => {
     if (selectedCategory) {
-      await fetchViewData(); // Fetch the data first
+      await fetchViewData(); // Fetch the data based on the selected method and date option
       setShowModal(false); // Close the modal after fetching data
     }
   };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -348,56 +364,43 @@ const DepreciationPage = () => {
 
                   {/* Date Range Options */}
                   <div className="mb-4">
-                    <label className="text-gray-700 font-semibold">Date Range</label>
-                    <div className="flex space-x-4 mt-2">
-                      <button
-                        onClick={() => {
-                          setDateOption('today');
-                          setStartDate('');
-                          setEndDate('');
-                        }}
-                        className={`px-4 py-2 text-sm font-semibold ${dateOption === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => setDateOption('custom')}
-                        className={`px-4 py-2 text-sm font-semibold ${dateOption === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
-                      >
-                        Custom Range
-                      </button>
-                    </div>
-                  </div>
+  <label className="text-gray-700 font-semibold">Date Range</label>
+  <div className="flex space-x-4 mt-2">
+    <button
+      onClick={() => {
+        setDateOption('today'); // Select "Today" option
+        setStartDate(''); // Clear any custom date
+      }}
+      className={`px-4 py-2 text-sm font-semibold ${dateOption === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
+    >
+      Today
+    </button>
+    <button
+      onClick={() => setDateOption('custom')} // Select "Custom" option
+      className={`px-4 py-2 text-sm font-semibold ${dateOption === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
+    >
+      Custom Range
+    </button>
+  </div>
+</div>
 
                   {/* Custom Range Inputs */}
-                  {dateOption === 'custom' && (
-                    <div className="flex gap-4 mb-4">
-                      <div className="flex flex-col w-full">
-                        <label htmlFor="startDate" className="mb-2 text-gray-700 font-semibold">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          id="startDate"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
-                        />
-                      </div>
-                      <div className="flex flex-col w-full">
-                        <label htmlFor="endDate" className="mb-2 text-gray-700 font-semibold">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          id="endDate"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
-                        />
-                      </div>
-                    </div>
-                  )}
+{dateOption === 'custom' && (
+  <div className="flex gap-4 mb-4">
+    <div className="flex flex-col w-full">
+      <label htmlFor="startDate" className="mb-2 text-gray-700 font-semibold">
+        Select Date
+      </label>
+      <input
+        type="date"
+        id="startDate"
+        value={startDate}
+        onChange={(e) => setStartDate(e.target.value)} // Set the custom start date
+        className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
+      />
+    </div>
+  </div>
+)}
 
                   <div className="flex justify-end">
                     <button
