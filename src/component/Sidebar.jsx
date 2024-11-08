@@ -27,16 +27,18 @@ const Sidebar = () => {
         <Link to="/Approval" className="flex items-center space-x-3 cursor-pointer">
           <FaUserCog /> <span>Approval Authority</span>
         </Link>
+      
+        <Link to="/Workflow" className="flex items-center space-x-3 cursor-pointer">
+          
+          <FaProjectDiagram /> <span>Workflow</span>
+        </Link>
         <Link to="/Depreciation" className="flex items-center space-x-3 cursor-pointer">
           <FaUserCog /> <span>Depreciation</span>
         </Link>
         <li className="flex items-center space-x-3 cursor-pointer">
           <FaClipboardList /> <span>Audit Logs</span>
         </li>
-        <Link to="/Workflow" className="flex items-center space-x-3 cursor-pointer">
-          
-  <FaProjectDiagram /> <span>Workflow</span>
-</Link>
+     
 
       </ul>
     </div>

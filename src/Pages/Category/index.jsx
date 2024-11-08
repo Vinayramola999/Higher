@@ -6,6 +6,10 @@ const Category = () => {
   const [categoryData, setCategoryData] = useState({
     categoryName: "",
     categoryType: "Select Type",
+    workflowname: "Select Workflow",
+    approvalrole: "Approvers Role", // Initialize approversRole
+
+    createdBy: "Admin",
   });
   
   const [categories, setCategories] = useState([]);
@@ -18,6 +22,10 @@ const Category = () => {
   const [roles, setRoles] = useState([]);
 const [selectedRole, setSelectedRole] = useState('');
 const [selectedWorkflow, setSelectedWorkflow] = useState('');
+const [workflows, setWorkflows] = useState([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+
 const[selectedApprovalRole, setSelectedApprovalRole]= useState('');
 const filteredCategories = categories.filter(category =>
   category.categoriesname?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -50,6 +58,21 @@ const filteredCategories = categories.filter(category =>
         });
     }
   }, [isEditCategoryModalOpen, categories]);
+  useEffect(() => {
+    const fetchWorkflows = async () => {
+      try {
+        const response = await axios.get('http://higherindia.net:9898/workflow/get');
+        if (response && response.data) {
+          setWorkflows(response.data);  // Assuming workflows are returned in response.data
+        }
+      } catch (error) {
+        console.error('Error fetching workflows:', error);
+      }
+    };
+
+    fetchWorkflows();
+  }, []);  // Empty dependency array means this effect runs once on component mount
+  
   
 
   const fetchCategories = async () => {
@@ -126,7 +149,12 @@ const filteredCategories = categories.filter(category =>
 
         categoriesname: categoryData.categoryName,
         description: categoryData.categoryType,
+        workflowname: categoryData.workflowname,
+        approvalrole: categoryData.approvalrole,
+        Created_by:  categoryData. createdBy,
+
         fields: [...existingFields, ...newFields],
+       
       };
       const response = await axios.post("http://higherindia.net:9898/api/categories/add", newCategory);
       setUpdatedOn(new Date());
@@ -144,7 +172,7 @@ const filteredCategories = categories.filter(category =>
   // }
 
   const resetForm = () => {
-    setCategoryData({ categoryName: "", categoryType: "Select Type" });
+    setCategoryData({ categoryName: "", categoryType: "Select Type", workflowname:"Select Workflow ",approvalrole:"Approvers Role", createdBy:"Admin " });
     setNewFields([{ fieldname: "", assetDataType: "String", isUnique: false,isNullable: false }]);
   };
 
@@ -280,10 +308,11 @@ const filteredCategories = categories.filter(category =>
     );
 
     setNewFields(!filterCategoryFields.length?[
-      { fieldname: "Asset Name", assetDataType: "String", isUnique: false, isNullable: false },
-      { fieldname: "Unit of Measure", assetDataType: "String", isUnique: false, isNullable: false },
-      { fieldname: "Upload", assetDataType: "String", isUnique: false, isNullable: false },
-      { fieldname: "Quantity", assetDataType: "Number", isUnique: false, isNullable: false },
+      { fieldname: "Assertname", assetDataType: "String", isUnique: false, isNullable: false },
+      { fieldname: "dateOfPurchase", assetDataType: "String", isUnique: false, isNullable: false },
+      { fieldname: "original coast", assetDataType: "String", isUnique: false, isNullable: false },
+      { fieldname: "scrapvalue", assetDataType: "Number", isUnique: false, isNullable: false },
+      { fieldname: "usefullife", assetDataType: "Number", isUnique: false, isNullable: false },
     ]:[{ fieldname: "", assetDataType: "String", isUnique: false, isNullable: false }]);  // Reset new fields
     
   };
@@ -356,22 +385,25 @@ const filteredCategories = categories.filter(category =>
               <option value="Multiple Record">Multiple Record</option>
             </select>
           </div>
-          <div className="flex flex-col gap-2">
-  <label className="text-[#555252]">Select Workflow</label>
-  <select
-    name="workflow"
-    value={selectedWorkflow}
-    onChange={(e) => setSelectedWorkflow(e.target.value)}
-    className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
-    required
-  >
-    <option value="">Select Workflow</option>
-    <option value="1">Approval Workflow</option>
-    <option value="2">Review Workflow</option>
-    <option value="3">Submission Workflow</option>
-    <option value="4">Custom Workflow</option>
-  </select>
-</div>
+          {/* Workflow Dropdown */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[#555252]">Select Workflow</label>
+        <select
+          name="workflow"
+          className="p-2 w-[200px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#F0F0F0]"
+          required
+        >
+          <option value="">Select Workflow</option>
+          {/* Dynamically render workflows from API */}
+          {workflows.map((workflow) => (
+            <option key={workflow.id} value={workflow.workflowname}>
+              {workflow.workflowname} {/* Adjust according to the structure of your API response */}
+            </option>
+          ))}
+          {/* name="categoryType"
+          value={categoryData.categoryType} */}
+        </select>
+      </div>
    {/* Approval Role Dropdown */}
    <div className="flex flex-col gap-2">
             <label className="text-[#555252]">Approvers Role</label>
@@ -423,7 +455,7 @@ const filteredCategories = categories.filter(category =>
 
 
         {/* Category Table */}
-        <div className="overflow-x-auto h-[560px]">
+        <div className="overflow-x-auto h-[584px]">
           <table className="min-w-full table-auto bg-white shadow-md rounded-lg">
           <thead className="sticky top-0 bg-gray-200">
           <tr>
@@ -432,6 +464,7 @@ const filteredCategories = categories.filter(category =>
                 <th className="p-3 text-left">Category Type</th>
                 <th className="p-3 text-left">Date </th>
                 <th className="p-3 text-left">Workflow </th>
+                <th className="p-3 text-left">Approvers Role </th>
                 <th className="p-3 text-left">Creator Name</th>
                 <th className="p-3 text-left">Action</th>
               </tr>
@@ -444,7 +477,8 @@ const filteredCategories = categories.filter(category =>
                     <td className="p-3">{category.categoriesname}</td>
                     <td className="p-3">{category.description}</td>
                     <td className="p-3">{category?.createdAt ? formatDate(category?.createdAt) : ''}</td>
-                    <td className="p-3">{category.selectWorkflow}</td>
+                    <td className="p-3">{category.workflowname}</td>
+                    <td className="p-3">{category.approvalrole}</td>
                     <td className="p-3">{category.createdBy}</td>
                     <td className="p-3 flex space-x-2">
                       <button

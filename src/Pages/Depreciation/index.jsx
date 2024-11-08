@@ -7,84 +7,233 @@ const DepreciationPage = () => {
   const [selectedMethod, setSelectedMethod] = useState('WDV');
   const [showModal, setShowModal] = useState(false);
   const [showTable, setShowTable] = useState(false);
+  const [depreciationValue, setDepreciationValue] = useState('');
+  const [data, setData] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
+  const [viewData, setViewData] = useState([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateOption, setDateOption] = useState('custom'); // New state for date range option
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await fetch('http://higherindia.net:9898/api/categories/fetch');
-        const data = await response.json();
-        setCategories(data); // Adjust based on actual response structure
+        const result = await response.json();
+        setCategories(result);
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
     };
 
     fetchCategories();
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://higherindia.net:9898/test/depr/getall');
+      const result = await response.json();
+      setData(result);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     if (tab === 'view') {
-      setShowModal(true); // Open modal when switching to View Depreciation
+      setShowModal(true);
+      setShowTable(false);
     } else {
-      setShowModal(false); // Close modal when switching back to Setup
-      setShowTable(false); // Ensure table is hidden when in Setup
+      setShowModal(false);
     }
   };
 
-  const handleSubmit = () => {
+  const fetchViewData = async () => {
+    const formattedStartDate = dateOption === 'today' ? new Date().toISOString().split('T')[0] : startDate;
+    const formattedEndDate = dateOption === 'today' ? new Date().toISOString().split('T')[0] : endDate;
+    
+    try {
+      const endpoint =
+        selectedMethod === 'WDV'
+          ? `http://higherindia.net:9898/api/dep/calculateWDB/${selectedCategory}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
+          : `http://higherindia.net:9898/api/dep/calculateDepreciation/${selectedCategory}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
+      
+      const response = await fetch(endpoint);
+      const result = await response.json();
+      setViewData(result);
+      setShowTable(true);
+    } catch (error) {
+      console.error('Error fetching depreciation data:', error);
+    }
+  };
+
+  const handleViewSubmit = async () => {
+    if (selectedCategory) {
+      await fetchViewData(); // Fetch the data first
+      setShowModal(false); // Close the modal after fetching data
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      categoriesname: selectedCategory,
+      assertName: 'Laptop',
+      deprecessionPercentage: parseFloat(depreciationValue),
+      createdBy: 'Admin',
+    };
+
+    try {
+      const response = await fetch('http://higherindia.net:9898/test/depr/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const updatedData = await fetch('http://higherindia.net:9898/test/depr/getall');
+        const result = await updatedData.json();
+        setData(result);
+        resetForm();
+      } else {
+        console.error('Failed to save data');
+      }
+    } catch (error) {
+      console.error('Error submitting data:', error);
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingItem(item);
+    setSelectedCategory(item.categoriesname);
+    setDepreciationValue(item.deprecessionPercentage);
+    setShowModal(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    const payload = {
+      ...editingItem,
+      categoriesname: selectedCategory,
+      deprecessionPercentage: parseFloat(depreciationValue),
+    };
+
+    try {
+      const response = await fetch(`http://higherindia.net:9898/test/depr/update/${editingItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const updatedData = await fetch('http://higherindia.net:9898/test/depr/getall');
+        const result = await updatedData.json();
+        setData(result);
+        resetForm();
+      } else {
+        console.error('Failed to update data');
+      }
+    } catch (error) {
+      console.error('Error updating data:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`http://higherindia.net:9898/test/depr/delete/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const updatedData = await fetch('http://higherindia.net:9898/test/depr/getall');
+        const result = await updatedData.json();
+        setData(result);
+      } else {
+        console.error('Failed to delete data');
+      }
+    } catch (error) {
+      console.error('Error deleting data:', error);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedCategory('');
+    setDepreciationValue('');
+    setEditingItem(null);
     setShowModal(false);
-    setShowTable(true);
+    setShowTable(false);
+  };
+
+  const exportToCSV = () => {
+    const csvData = [
+      ['Sr. No.', 'Category', 'Asset', 'Original Cost', selectedMethod === 'SLM' ? 'SLM Depreciation' : 'WDV Depreciation', 'Time Stamp'],
+      ...viewData.map((item, index) => [
+        index + 1,
+        item.categoriesName,
+        item.assetName,
+        item.originalCost,
+        selectedMethod === 'SLM' ? item.slmDepreciation : item.wdvDepreciation,
+        new Date(item.timeStamp).toLocaleString()
+      ]),
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + csvData.map(e => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'depreciation_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-    {/* Tabs */}
-    <div className="relative flex justify-left space-x-8 mb-6 border-b border-gray-300">
-      <button
-        className={`px-6 py-2 text-sm md:text-lg font-semibold relative focus:outline-none transition duration-300 ${
-          activeTab === 'setup' ? 'text-blue-600' : 'text-gray-600'
-        }`}
-        onClick={() => handleTabSwitch('setup')}
-      >
-        Setup WDV
-        {activeTab === 'setup' && (
-          <div className="absolute left-0 right-0 h-1 bg-blue-600 bottom-0 transition-all duration-300"></div>
-        )}
-      </button>
+      {/* Tabs and setup */}
+      <div className="relative flex justify-left space-x-8 mb-6 border-b border-gray-300">
+        <button
+          className={`px-6 py-2 text-sm md:text-lg font-semibold relative focus:outline-none transition duration-300 ${activeTab === 'setup' ? 'text-blue-600' : 'text-gray-600'}`}
+          onClick={() => handleTabSwitch('setup')}
+        >
+          Setup WDV
+          {activeTab === 'setup' && <div className="absolute left-0 right-0 h-1 bg-blue-600 bottom-0 transition-all duration-300"></div>}
+        </button>
 
-      <button
-        className={`px-6 py-2 text-sm md:text-lg font-semibold relative focus:outline-none transition duration-300 ${
-          activeTab === 'view' ? 'text-blue-600' : 'text-gray-600'
-        }`}
-        onClick={() => handleTabSwitch('view')}
-      >
-        View Depreciation
-        {activeTab === 'view' && (
-          <div className="absolute left-0 right-0 h-1 bg-blue-600 bottom-0 transition-all duration-300"></div>
-        )}
-      </button>
-    </div>
+        <button
+          className={`px-6 py-2 text-sm md:text-lg font-semibold relative focus:outline-none transition duration-300 ${activeTab === 'view' ? 'text-blue-600' : 'text-gray-600'}`}
+          onClick={() => handleTabSwitch('view')}
+        >
+          View Depreciation
+          {activeTab === 'view' && <div className="absolute left-0 right-0 h-1 bg-blue-600 bottom-0 transition-all duration-300"></div>}
+        </button>
+      </div>
 
-      {/* Main Content */}
+      {/* Setup WDV Form */}
       <div className="bg-white shadow-lg rounded-lg p-6">
         {activeTab === 'setup' ? (
           <div>
-            {/* Form for setting up depreciation */}
+            {/* Form for adding/editing depreciation data */}
             <div className="flex md:grid-cols-3 gap-4 mb-7">
               <div className="flex flex-col">
-                <label htmlFor="category" className="mb-2 text-gray-700 font-semibold">
+                <label htmlFor="categories" className="mb-2 text-gray-700 font-semibold">
                   Select Category
                 </label>
                 <select
-                  id="category"
+                  id="categories"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-[250px]"
                 >
-                  <option value="">-- Select Category --</option>
+                  <option value="">Select Category</option>
                   {categories.map((category, i) => (
                     <option key={i} value={category.categoriesname}>
                       {category.categoriesname}
@@ -92,87 +241,64 @@ const DepreciationPage = () => {
                   ))}
                 </select>
               </div>
+
               <div className="flex flex-col">
                 <label htmlFor="depreciation" className="mb-2 text-gray-700 font-semibold">
                   Depreciation Value (%)
                 </label>
-                <div className="flex items-center">
-                  <input
-                    id="depreciation"
-                    type="number"
-                    placeholder="Enter Dep Value"
-                    className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-[250px]"
-                  />
-                  {/* <span className="ml-2">%</span> */}
-                </div>
-              </div>
-
-              {/* Date Range Inputs */}
-              <div className="flex flex-col">
-                <label htmlFor="startDate" className="mb-2 text-gray-700 font-semibold">
-                  Estimated Date
-                </label>
                 <input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  id="depreciation"
+                  type="number"
+                  value={depreciationValue}
+                  onChange={(e) => setDepreciationValue(e.target.value)}
+                  placeholder="Enter Dep Value"
                   className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-[250px]"
                 />
               </div>
 
-              
-
               <div className="flex items-end">
-                <button className="w-[250px] px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300">
-                  Submit
+                <button onClick={editingItem ? handleUpdate : handleSubmit} className="w-[250px] px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300">
+                  {editingItem ? 'Update' : 'Submit'}
                 </button>
               </div>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto  ">
+            {/* Data Table */}
+            <div className="overflow-x-auto">
               <table className="w-full table-auto border-collapse">
-                <thead >
-                  <tr className="bg-gray-100">
+                <thead>
+                  <tr className="bg-gray-300 sticky top-0">
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Sr. No.</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Category</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Depreciation [%]</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Estimated Date</th>
-                   
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Time Stamp</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Created By</th>
                     <th className="px-4 py-2 text-left font-semibold text-gray-600">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Example Data Row */}
-                  <tr className="bg-white odd:bg-gray-50">
-                    <td className="px-4 py-2 border text-gray-700">1</td>
-                    <td className="px-4 py-2 border text-gray-700">Category Name XYZ</td>
-                    <td className="px-4 py-2 border text-gray-700">67%</td>
-                    <td className="px-4 py-2 border text-gray-700">01-01-2024</td>
-                   
-                    <td className="px-4 py-2 border text-gray-700">02-05-2024 2:30:54 PM</td>
-                    <td className="px-4 py-2 border text-gray-700">sumit@123</td>
-                    <td className="px-4 py-2 border">
-                      <button className="text-blue-600 hover:underline mr-2">✏️</button>
-                      <button className="text-red-600 hover:underline">🗑️</button>
-                    </td>
-                  </tr>
-                  {/* Repeat for more rows */}
+                  {data.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-2 border text-gray-700">{index + 1}</td>
+                      <td className="px-4 py-2 border text-gray-700">{item.categoriesname}</td>
+                      <td className="px-4 py-2 border text-gray-700">{item.deprecessionPercentage}</td>
+                      <td className="px-4 py-2 border text-gray-700">{new Date(item.createdat).toLocaleString()}</td>
+                      <td className="px-4 py-2 border text-gray-700">{item.createdBy}</td>
+                      <td className="px-4 py-2 border text-gray-700">
+                        <button onClick={() => handleEdit(item)} className="text-blue-600">Edit</button>
+                        <button onClick={() => handleDelete(item.id)} className="text-red-600 ml-2">Delete</button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
-          
         ) : (
-          
           <div>
-            
-            {/* Modal for Depreciation Method Selection */}
+            {/* View Depreciation Modal */}
             {showModal && (
-              <div className="fixed inset-0 flex items-center justify-center">
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
                 <div className="bg-white rounded-lg shadow-lg p-6 w-[800px]">
                   <h2 className="text-lg font-bold mb-4">Select Method</h2>
                   <div className="mb-4">
@@ -199,43 +325,90 @@ const DepreciationPage = () => {
                       SLM
                     </label>
                   </div>
+
+                  {/* Category and Date Range */}
                   <div className="flex flex-col mb-4">
-                    <label className="text-gray-700">Select Asset:</label>
-                    <select className="border border-gray-300 rounded-md p-2 focus:ring focus:ring-blue-200">
-                      <option value="">-- Select Asset --</option>
-                      {/* Populate asset options here */}
-                    </select>
-                  </div>
-                  <div className="flex flex-col mb-4">
-                    <label htmlFor="category" className="mb-2 text-gray-700 font-semibold">
+                    <label htmlFor="categories" className="mb-2 text-gray-700 font-semibold">
                       Select Category
                     </label>
                     <select
-                      id="category"
+                      id="categories"
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
+                      className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
                     >
-                      <option value="">-- Select Category --</option>
+                      <option value="">Select Category</option>
                       {categories.map((category, i) => (
                         <option key={i} value={category.categoriesname}>
                           {category.categoriesname}
                         </option>
                       ))}
-                      
                     </select>
-                    
                   </div>
+
+                  {/* Date Range Options */}
+                  <div className="mb-4">
+                    <label className="text-gray-700 font-semibold">Date Range</label>
+                    <div className="flex space-x-4 mt-2">
+                      <button
+                        onClick={() => {
+                          setDateOption('today');
+                          setStartDate('');
+                          setEndDate('');
+                        }}
+                        className={`px-4 py-2 text-sm font-semibold ${dateOption === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => setDateOption('custom')}
+                        className={`px-4 py-2 text-sm font-semibold ${dateOption === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
+                      >
+                        Custom Range
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Custom Range Inputs */}
+                  {dateOption === 'custom' && (
+                    <div className="flex gap-4 mb-4">
+                      <div className="flex flex-col w-full">
+                        <label htmlFor="startDate" className="mb-2 text-gray-700 font-semibold">
+                          Start Date
+                        </label>
+                        <input
+                          type="date"
+                          id="startDate"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
+                        />
+                      </div>
+                      <div className="flex flex-col w-full">
+                        <label htmlFor="endDate" className="mb-2 text-gray-700 font-semibold">
+                          End Date
+                        </label>
+                        <input
+                          type="date"
+                          id="endDate"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200 w-full"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end">
-                  <button
+                    <button
                       onClick={() => setShowModal(false)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300 mr-20"
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300 mr-2"
                     >
                       Cancel
                     </button>
                     <button
                       className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300"
-                      onClick={handleSubmit}
+                      onClick={handleViewSubmit}
                     >
                       Submit
                     </button>
@@ -243,123 +416,78 @@ const DepreciationPage = () => {
                 </div>
               </div>
             )}
-            {/* Modal for Depreciation Method Selection */}
-{showModal && (
-  <div className="fixed inset-0 flex items-center justify-center  bg-black bg-opacity-50 backdrop-blur-sm">
-    <div className="bg-white rounded-lg shadow-lg p-6 w-[800px]">
-      <h2 className="text-lg font-bold mb-4">Select Method</h2>
-      <div className="mb-4">
-        <label>
-          <input
-            type="radio"
-            value="WDV"
-            checked={selectedMethod === 'WDV'}
-            onChange={() => setSelectedMethod('WDV')}
-            className="mr-2"
-          />
-          WDV
-        </label>
-      </div>
-      <div className="mb-4">
-        <label>
-          <input
-            type="radio"
-            value="SLM"
-            checked={selectedMethod === 'SLM'}
-            onChange={() => setSelectedMethod('SLM')}
-            className="mr-2"
-          />
-          SLM
-        </label>
-      </div>
-      <div className="flex flex-col mb-4">
-        <label className="text-gray-700">Select Asset:</label>
-        <select className="border border-gray-300 rounded-md p-2 focus:ring focus:ring-blue-200">
-          <option value="">-- Select Asset --</option>
-          {/* Populate asset options here */}
-        </select>
-      </div>
-      <div className="flex flex-col mb-4">
-        <label htmlFor="category" className="mb-2 text-gray-700 font-semibold">
-          Select Category
-        </label>
-        <select
-          id="category"
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-200"
-        >
-          <option value="">-- Select Category --</option>
-          {categories.map((category, i) => (
-            <option key={i} value={category.categoriesname}>
-              {category.categoriesname}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex justify-end">
-        <button
-          onClick={() => setShowModal(false)}
-          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300 mr-20"
-        >
-          Cancel
-        </button>
-        <button
-          className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition duration-300"
-          onClick={handleSubmit}
-        >
-          Submit
-        </button>
-      </div>
-    </div>
-  </div>
-  
-  
-)}
 
+            {/* View Depreciation Table */}
+            {showTable && (
+              <div>
+                <button
+                  onClick={exportToCSV}
+                  className="mb-4 px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition duration-300"
+                >
+                  Export to CSV
+                </button>
+                <div className="overflow-x-auto">
+  <table className="w-full table-auto border-collapse">
+    <thead>
+      <tr className="bg-gray-100">
+        <th className="px-4 py-2 text-left font-semibold text-gray-600">Sr. No.</th>
+        <th className="px-4 py-2 text-left font-semibold text-gray-600">Category</th>
+        <th className="px-4 py-2 text-left font-semibold text-gray-600">Asset</th>
+        <th className="px-4 py-2 text-left font-semibold text-gray-600">Original Cost</th>
+        {selectedMethod === 'SLM' && (
+          <th className="px-4 py-2 text-left font-semibold text-gray-600">SLM Depreciation</th>
+        )}
+        {selectedMethod === 'WDV' && (
+          <th className="px-4 py-2 text-left font-semibold text-gray-600">WDV Depreciation</th>
+        )}
+        <th className="px-4 py-2 text-left font-semibold text-gray-600">Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {viewData.map((item, index) => (
+        <tr key={index}>
+          <td className="px-4 py-2 text-gray-700">{index + 1}</td>
+          
+          {/* Category Column */}
+          {selectedMethod === 'SLM' && (
+            <td className="px-4 py-2 text-gray-700">{item['Categories Name']}</td> // SLM Category
+          )}
+          {selectedMethod === 'WDV' && (
+            <td className="px-4 py-2 text-gray-700">{item['CategoriesName']}</td> // WDV Category (slightly different key)
+          )}
 
+          {/* Asset Column */}
+          {selectedMethod === 'SLM' && (
+            <td className="px-4 py-2 text-gray-700">{item['Assert Name']}</td> // SLM Asset Name
+          )}
+          {selectedMethod === 'WDV' && (
+            <td className="px-4 py-2 text-gray-700">{item['Asset Name']}</td> // WDV Asset Name (different key)
+          )}
 
+          {/* Original Cost Column */}
+          <td className="px-4 py-2 text-gray-700">{item['Original Cost']}</td>
 
-            {/* Table for Depreciation Data */}
-            
-            {showTable && 
-            (
-              <div className="overflow-x-auto">
-                
-                <table className="w-full table-auto border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Sr. No.</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Category</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Asset</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Cost</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Depreciated value</th>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Time stamp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Example Data Row */}
-                    <tr className="bg-white odd:bg-gray-50">
-                      <td className="px-4 py-2 border text-gray-700">1</td>
-                      <td className="px-4 py-2 border text-gray-700">Category Name XYZ</td>
-                      <td className="px-4 py-2 border text-gray-700">Laptop</td>
-                      <td className="px-4 py-2 border text-gray-700">$5000</td>
-                      <td className="px-4 py-2 border text-gray-700">$4000</td>
+          {/* Depreciation Column */}
+          {selectedMethod === 'SLM' && (
+            <td className="px-4 py-2 text-gray-700">{item['Slm Depreciation']}</td> // SLM Depreciation
+          )}
+          {selectedMethod === 'WDV' && (
+            <td className="px-4 py-2 text-gray-700">{item['Wdb Value']}</td> // WDV Depreciation (Wdb Value)
+          )}
 
-                      <td className="px-4 py-2 border text-gray-700">02-05-2024 2:30:54 PM</td>
-                    </tr>
-                    {/* Repeat for more rows */}
-                  </tbody>
-                </table>
-                
+          {/* Date Column */}
+          <td className="px-4 py-2 text-gray-700">{new Date(item['Date Of Purchase']).toLocaleString()}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
               </div>
             )}
           </div>
         )}
       </div>
     </div>
-              
-
   );
 };
 
